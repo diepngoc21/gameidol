@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIA & The Idols - Visual Novel 2D</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .pixel-border {
+            border: 3px solid #f472b6;
+            box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
+        }
+
+        /* Animated Speech Bubble Triangle */
+        .speech-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 40px;
+            border-width: 12px 12px 0;
+            border-style: solid;
+            border-color: rgba(15, 23, 42, 0.95) transparent;
+            display: block;
+            width: 0;
+        }
+
+        .bg-grid-pattern {
+            background-image: radial-gradient(rgba(244, 114, 182, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ec4899;
+            border-radius: 3px;
+        }
+
+        .glow-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .glow-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-2 bg-slate-950">
+
+    <!-- MAIN GAME CONTAINER -->
+    <div id="game-container" class="relative w-full max-w-5xl h-[92vh] max-h-[750px] bg-slate-900 rounded-2xl pixel-border overflow-hidden flex flex-col justify-between shadow-2xl">
+        
+        <!-- STAGE & AFFECTION HUD BAR -->
+        <header class="h-14 bg-slate-950/90 border-b border-pink-500/30 px-4 flex items-center justify-between z-20 backdrop-blur-md">
+            <!-- Stage Info -->
+            <div class="flex items-center space-x-3">
+                <span class="bg-pink-600 text-white font-bold text-xs uppercase px-2.5 py-1 rounded-md shadow">Màn <span id="hud-stage">1</span></span>
+                <span class="text-pink-300 font-semibold text-sm">Chương <span id="hud-chapter">1</span>/5</span>
+                <span id="hud-title" class="text-xs text-slate-400 hidden sm:inline border-l border-slate-700 pl-3">Buổi diễn 1 - Gặp gỡ</span>
+            </div>
+
+            <!-- Affection Levels -->
+            <div class="flex items-center space-x-4 text-xs font-bold">
+                <!-- ROSA -->
+                <div class="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1 rounded-full border border-orange-500/40">
+                    <span class="text-orange-400">ROSA:</span>
+                    <span id="aff-rosa" class="text-white">0</span>
+                    <span class="text-pink-500">♥</span>
+                </div>
+                <!-- LILI -->
+                <div class="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1 rounded-full border border-purple-500/40">
+                    <span class="text-purple-400">LILI:</span>
+                    <span id="aff-lili" class="text-white">0</span>
+                    <span class="text-pink-500">♥</span>
+                </div>
+                <!-- SUSI -->
+                <div class="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1 rounded-full border border-pink-500/40">
+                    <span class="text-pink-400">SUSI:</span>
+                    <span id="aff-susi" class="text-white">0</span>
+                    <span class="text-pink-500">♥</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center space-x-2">
+                <button id="btn-log" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-600">Nhật ký</button>
+                <button id="btn-reset" class="text-xs bg-red-950 hover:bg-red-900 text-red-300 px-2.5 py-1 rounded border border-red-700/50">Chơi lại</button>
+            </div>
+        </header>
+
+        <!-- STAGE BACKGROUND & SCENE CANVAS -->
+        <main class="relative flex-1 bg-grid-pattern overflow-hidden flex items-end justify-between px-6 pb-2">
+            
+            <!-- Dynamic Background Accent -->
+            <div id="bg-overlay" class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-pink-950/20 pointer-events-none"></div>
+
+            <!-- CHARACTER DISPLAY AREA (LEFT CORNER AS REQUESTED) -->
+            <div class="relative z-10 flex flex-col items-start max-w-xl w-full">
+                
+                <!-- SPEECH BUBBLE (ABOVE CHARACTER AS REQUESTED) -->
+                <div id="speech-bubble" class="speech-arrow relative w-full mb-3 bg-slate-950/95 border-2 border-pink-500/60 p-4 rounded-xl shadow-2xl backdrop-blur-md">
+                    <!-- Speaker Name Badge -->
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span id="speaker-name" class="text-xs font-extrabold uppercase tracking-wider text-pink-400 bg-pink-950/80 px-2.5 py-0.5 rounded border border-pink-500/40">
+                            LILIANA
+                        </span>
+                        <span id="outfit-tag" class="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                            Trang phục: Blue Outfit
+                        </span>
+                    </div>
+
+                    <!-- Dialogue Text -->
+                    <p id="dialogue-text" class="text-sm md:text-base text-slate-100 font-medium leading-relaxed min-h-[50px]">
+                        Chào chị MIA! Chúng em rất sẵn sàng cho buổi biểu diễn đầu tiên rồi!
+                    </p>
+                </div>
+
+                <!-- CHARACTER CANVAS & IMAGE SPRITE -->
+                <div class="relative flex items-end">
+                    <canvas id="character-canvas" width="220" height="300" class="drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]"></canvas>
+                    
+                    <!-- MIA Manager Avatar Preview (Small Badge) -->
+                    <div class="absolute bottom-2 left-2 bg-slate-950/90 border border-slate-700 px-2 py-1 rounded text-[10px] text-pink-300 font-bold">
+                        Quản lý MIA
+                    </div>
+                </div>
+
+                <!-- CHOICES CONTAINER (BELOW CHARACTER AS REQUESTED) -->
+                <div id="choices-container" class="w-full mt-3 space-y-2 mb-2">
+                    <!-- Choice buttons injected dynamically -->
+                </div>
+
+            </div>
+
+            <!-- RIGHT DECORATIVE SCENE PANEL -->
+            <div class="hidden md:flex flex-col items-end justify-end mb-4 z-10 space-y-3 opacity-90">
+                <!-- Current Outfit Preview Badge -->
+                <div class="bg-slate-950/80 border border-pink-500/30 p-3 rounded-xl max-w-[200px] text-right">
+                    <p class="text-[11px] text-pink-400 font-bold uppercase tracking-wider">Thông tin sự kiện</p>
+                    <p id="event-desc" class="text-xs text-slate-300 mt-1">Buổi biểu diễn Debut chính thức của nhóm Idol tại Nhà hát Trung tâm.</p>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FOOTER / PROGRESS STATUS -->
+        <footer class="h-6 bg-slate-950 border-t border-slate-800 px-4 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Game Otome 2D Interactive Novel</span>
+            <span>Tự động lưu tiến trình</span>
+        </footer>
+
+    </div>
+
+    <!-- DIALOGUE LOG MODAL -->
+    <div id="log-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-900 border-2 border-pink-500/50 rounded-xl p-5 max-w-lg w-full max-h-[80vh] flex flex-col shadow-2xl">
+            <h3 class="text-lg font-bold text-pink-400 mb-3 border-b border-slate-800 pb-2">Nhật Ký Hội Thoại</h3>
+            <div id="log-content" class="flex-1 overflow-y-auto space-y-3 pr-2 text-xs">
+                <!-- Log entries -->
+            </div>
+            <button id="btn-close-log" class="mt-4 bg-slate-800 hover:bg-slate-700 text-white font-bold py-1.5 rounded text-xs transition">Đóng</button>
+        </div>
+    </div>
+
+    <!-- GAME SCRIPT & ENGINE -->
+    <script>
+        // --- 1. GAME DATA & STORY STRUCTURE (5 STAGES x 5 CHAPTERS = 25 CHAPTERS) ---
+        const STORY = [
+            // STAGE 1: GẶP GỠ & TRÒ CHUYỆN (BUỔI DIỄN 1 - BLUE OUTFIT)
+            {
+                stage: 1,
+                chapter: 1,
+                title: "Gặp Gỡ Nhóm Idol",
+                speaker: "LILIANA",
+                outfit: "Trang phục buổi diễn 1 (Blue Outfit)",
+                text: "Chào chị MIA! Em là Liliana. Rất vui vì từ hôm nay chị sẽ trở thành quản lý chính thức của bọn em!",
+                choices: [
+                    { text: "Chào Lili! Rất vui được đồng hành cùng em.", target: "LILI", points: 2, nextText: "Lili cười dịu dàng: 'Dạ, em tin tưởng chị nhiều lắm!'" },
+                    { text: "Chào mọi người. Hãy nghiêm túc tập luyện nhé.", target: "ROSA", points: 1, nextText: "Rosa gật đầu: 'Hừm, ít ra chị cũng không tào lao.'" },
+                    { text: "Chào em... Đừng lo lắng quá nhé.", target: "SUSI", points: 2, nextText: "Susi rơm rớm nước mắt: 'Chị... chị đừng mắng em nhé...'" }
+                ]
+            },
+            {
+                stage: 1,
+                chapter: 2,
+                title: "Ấn Tượng Với ROSALIA",
+                speaker: "ROSALIA",
+                outfit: "Trang phục buổi diễn 1 (Blue Outfit)",
+                text: "Tôi là Rosalia. Đừng tưởng làm quản lý là có quyền hạch sách. Tôi chỉ quan tâm đến hiệu quả buổi diễn!",
+                choices: [
+                    { text: "Bên ngoài cứng rắn nhưng tôi biết em rất chu đáo.", target: "ROSA", points: 3, nextText: "Rosa đỏ mặt: 'Nói... nói vớ vẩn gì thế! Thôi đi chuẩn bị đi!'" },
+                    { text: "Lili ơi, giúp chị khuyên Rosa chút nhé.", target: "LILI", points: 2, nextText: "Lili mỉm cười xoa dịu: 'Rosa chỉ ngại thôi chị MIA ạ.'" },
+                    { text: "Susi đừng sợ, Rosa chỉ muốn tốt thôi.", target: "SUSI", points: 1, nextText: "Susi lý nhí: 'Dạ... em biết rồi...'" }
+                ]
+            },
+            {
+                stage: 1,
+                chapter: 3,
+                title: "Làm Quen Với SUSIAN",
+                speaker: "SUSIAN",
+                outfit: "Trang phục buổi diễn 1 (Blue Outfit)",
+                text: "Chị MIA... Trang phục Blue Outfit này rộng quá... Em sợ lên sân khấu sẽ làm hỏng mất... Hức...",
+                choices: [
+                    { text: "Đừng khóc mà Susi, chị sẽ chỉnh lại ngay cho em.", target: "SUSI", points: 3, nextText: "Susi nín thở nhìn bạn: 'Chị MIA thật là ân cần...'" },
+                    { text: "Em xinh lắm Susi, tự tin lên nhé!", target: "LILI", points: 1, nextText: "Lili gật đầu: 'Đúng đó Susi, em trông dễ thương lắm.'" },
+                    { text: "Khóc lóc không giải quyết được gì đâu.", target: "ROSA", points: 1, nextText: "Rosa thở dài: 'Nhưng chị MIA nói đúng đấy Susi.'" }
+                ]
+            },
+            {
+                stage: 1,
+                chapter: 4,
+                title: "Thử Thách Trước Giờ G",
+                speaker: "LILIANA",
+                outfit: "Trang phục buổi diễn 1 (Blue Outfit)",
+                text: "Chỉ còn 10 phút nữa là sân khấu 1 sáng đèn. Chị MIA có lời dặn dò nào cho nhóm không?",
+                choices: [
+                    { text: "Hãy tỏa sáng và tận hưởng từng khoảnh khắc!", target: "LILI", points: 2, nextText: "Lili nắm chặt tay bạn: 'Chúng em sẽ làm hết sức!'" },
+                    { text: "Chú ý từng động tác vũ đạo đã tập!", target: "ROSA", points: 2, nextText: "Rosa nhếch môi: 'Chắc chắn rồi, không để sót lỗi nào đâu.'" },
+                    { text: "Nếu run quá hãy nhìn về phía chị nhé!", target: "SUSI", points: 3, nextText: "Susi gật đầu mạnh mẽ: 'Em sẽ chỉ nhìn chị thôi!'" }
+                ]
+            },
+            {
+                stage: 1,
+                chapter: 5,
+                title: "Kết Thúc Buổi Biểu Diễn 1",
+                speaker: "ROSALIA",
+                outfit: "Trang phục buổi diễn 1 (Blue Outfit)",
+                text: "Khán giả vỗ tay rất lớn! Lần này... coi như chị quản lý làm tốt nhiệm vụ đấy.",
+                choices: [
+                    { text: "Nhờ sự cố gắng tuyệt vời của cả 3 em đấy.", target: "LILI", points: 2, nextText: "Cả nhóm cùng cười vui vẻ." },
+                    { text: "Đặc biệt là màn solo của Rosa rất xuất sắc!", target: "ROSA", points: 3, nextText: "Rosa quay mặt đi giấu nụ cười tươi." },
+                    { text: "Susi hôm nay đã làm rất tốt, không hề khóc!", target: "SUSI", points: 2, nextText: "Susi đỏ gò má quay sang ôm lấy chị." }
+                ]
+            },
+
+            // STAGE 2: TẠO ĐỘ THIỆN CẢM (BUỔI DIỄN 2 - PINK OUTFIT)
+            {
+                stage: 2,
+                chapter: 1,
+                title: "Thử Trang phục Pink Outfit",
+                speaker: "LILIANA",
+                outfit: "Trang phục buổi diễn 2 (Pink Outfit)",
+                text: "Màn 2 chuẩn bị cho Pink Outfit năng động! Chị MIA thấy em mặc bộ này thế nào?",
+                choices: [
+                    { text: "Dịu dàng và cực kỳ hợp với nụ cười của em!", target: "LILI", points: 3, nextText: "Lili áp tay lên má: 'Chị làm tim em đập nhanh quá...'" },
+                    { text: "Rosa mặc phong cách này trông cá tính lắm.", target: "ROSA", points: 1, nextText: "Rosa khoanh tay: 'Tôi biết rồi, không cần khen.'" },
+                    { text: "Susi trông như một nàng công chúa nhỏ.", target: "SUSI", points: 1, nextText: "Susi mỉm cười thẹn thùng." }
+                ]
+            },
+            {
+                stage: 2,
+                chapter: 2,
+                title: "Tâm Sự Đêm Khuya",
+                speaker: "ROSALIA",
+                outfit: "Trang phục buổi diễn 2 (Pink Outfit)",
+                text: "Chị MIA... Đã muộn thế này sao chị chưa về? Đừng làm việc quá sức đấy... tôi không lo cho chị đâu nhé!",
+                choices: [
+                    { text: "Em ở lại thức cùng chị sao? Cảm ơn Rosa.", target: "ROSA", points: 3, nextText: "Rosa đưa ly cà phê ấm: 'Uống đi cho tỉnh...'" },
+                    { text: "Chị muốn chuẩn bị lịch trình tốt nhất cho Lili.", target: "LILI", points: 1, nextText: "Lili bước vào: 'Chị MIA thật chu đáo.'" },
+                    { text: "Susi đã ngủ chưa em?", target: "SUSI", points: 1, nextText: "Susi đang cuộn mình trên sofa chờ bạn." }
+                ]
+            },
+            {
+                stage: 2,
+                chapter: 3,
+                title: "Nỗi Lòng Của SUSI",
+                speaker: "SUSIAN",
+                outfit: "Trang phục buổi diễn 2 (Pink Outfit)",
+                text: "Chị MIA ơi... Có nhiều bình luận chê em chưa hát tốt... Em thấy mình kém cỏi quá...",
+                choices: [
+                    { text: "Đừng nghe họ! Trong mắt chị em luôn nỗ lực nhất.", target: "SUSI", points: 3, nextText: "Susi ôm lấy bạn khóc nức nở vì xúc động." },
+                    { text: "Lili và Rosa cũng sẽ giúp đỡ em mà.", target: "LILI", points: 2, nextText: "Lili xoa đầu Susi động viên." },
+                    { text: "Biến lời chê thành động lực đi Susi!", target: "ROSA", points: 1, nextText: "Rosa gật đầu tán thành." }
+                ]
+            },
+            {
+                stage: 2,
+                chapter: 4,
+                title: "Tập Luyện Căng Thẳng",
+                speaker: "LILIANA",
+                outfit: "Trang phục buổi diễn 2 (Pink Outfit)",
+                text: "Mọi người đều mệt rồi. Chị MIA có mua đồ ăn nhẹ cho cả nhóm không?",
+                choices: [
+                    { text: "Chị mua bánh ngọt dịu nhẹ cho Lili nè.", target: "LILI", points: 3, nextText: "Lili mắt sáng rỡ: 'Chị nhớ cả món em thích nữa!'" },
+                    { text: "Cà phê đen không đường cho Rosa.", target: "ROSA", points: 3, nextText: "Rosa mỉm cười nhẹ: 'Cảm ơn chị.'" },
+                    { text: "Sữa dâu nóng cho Susi nè em.", target: "SUSI", points: 3, nextText: "Susi vui vẻ ôm lấy ly sữa." }
+                ]
+            },
+            {
+                stage: 2,
+                chapter: 5,
+                title: "Bức Thư Bí Mật",
+                speaker: "ROSALIA",
+                outfit: "Trang phục buổi diễn 2 (Pink Outfit)",
+                text: "Có ai đó đã để lại một bức thư cảm ơn riêng cho quản lý MIA ở phòng chờ...",
+                choices: [
+                    { text: "Nét chữ dịu dàng này... chắc là của Lili.", target: "LILI", points: 2, nextText: "Lili ngượng ngùng đỏ mặt." },
+                    { text: "Net chữ cứng cáp sắc sảo... là của Rosa đúng không?", target: "ROSA", points: 3, nextText: "Rosa giật lại thư: 'Đừng... đừng đọc to lên!'" },
+                    { text: "Hình vẽ trái tim đáng yêu này chắc là Susi.", target: "SUSI", points: 2, nextText: "Susi tủm tỉm cười hạnh phúc." }
+                ]
+            },
+
+            // STAGE 3: HẸN HÒ BÍ MẬT & THỬ THÁCH NÉ FAN (TRANG PHỤC THƯỜNG NGÀY)
+            {
+                stage: 3,
+                chapter: 1,
+                title: "Quyết Định Hẹn Hò Bí Mật",
+                speaker: "SYSTEM",
+                outfit: "Trang phục thường ngày",
+                text: "Độ thiện cảm đã quyết định người bạn chọn đi chơi bí mật hôm nay!",
+                choices: [
+                    { text: "Mời Idol có điểm cao nhất đi dạo công viên.", target: "AUTO", points: 0, nextText: "Hai người bí mật cải trang ra ngoài." },
+                    { text: "Đi uống trà chiều ở một quán cà phê vắng.", target: "AUTO", points: 0, nextText: "Không gian lãng mạn chỉ có 2 người." },
+                    { text: "Cùng nhau ngắm hoàng hôn bên bờ sông.", target: "AUTO", points: 0, nextText: "Khung cảnh vô cùng ngọt ngào." }
+                ]
+            },
+            {
+                stage: 3,
+                chapter: 2,
+                title: "Cảm Xúc Thăng Hoa",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục thường ngày",
+                text: "Ở bên cạnh chị MIA thế này... em cảm thấy thật bình yên. Ước gì thời gian dừng lại...",
+                choices: [
+                    { text: "Nắm chặt lấy tay Idol và mỉm cười.", target: "CURRENT", points: 3, nextText: "Mặt Idol đỏ chót, ngập tràn hạnh phúc." },
+                    { text: "Nói lời ngọt ngào: 'Chị sẽ luôn bảo vệ em.'", target: "CURRENT", points: 3, nextText: "Idol tựa đầu vào vai bạn." },
+                    { text: "Tặng một món quà nhỏ kỷ niệm.", target: "CURRENT", points: 2, nextText: "Idol ôm món quà vào lòng." }
+                ]
+            },
+            {
+                stage: 3,
+                chapter: 3,
+                title: "NGUY HIỂM: BÓNG DÁNG FAN HÂM MỘ",
+                speaker: "SYSTEM",
+                outfit: "Trang phục thường ngày",
+                text: "CẢNH BÁO: Bất ngờ có một nhóm Fan hâm mộ đi tới! Họ đang nghi ngờ nhìn về phía hai người!",
+                choices: [
+                    { text: "Kéo Idol nấp sau lùm cây và giữ im lặng.", target: "SAFE", points: 1, nextText: "An toàn thoát khỏi tầm mắt người hâm mộ!" },
+                    { text: "Nắm tay Idol chạy thật nhanh!", target: "RISK", points: -5, nextText: "Họ phát hiện ra và chụp ảnh! GAME OVER! Bạn phải chuyển công ty!" },
+                    { text: "Giả làm người xa lạ đi lướt qua.", target: "SAFE", points: 1, nextText: "Nhóm Fan không nhận ra người quen." }
+                ]
+            },
+            {
+                stage: 3,
+                chapter: 4,
+                title: "CẢNH BÁO PAPARAZZI",
+                speaker: "SYSTEM",
+                outfit: "Trang phục thường ngày",
+                text: "Có ánh đèn flash lóe lên từ xa! Một ống kính máy ảnh Paparazzi đang hướng về phía bạn!",
+                choices: [
+                    { text: "Đội mũ che mặt Idol và giả vờ mua đồ.", target: "SAFE", points: 1, nextText: "Cánh phóng viên tưởng nhầm người và bỏ đi." },
+                    { text: "Đứng lại tranh cãi với phóng viên.", target: "RISK", points: -5, nextText: "Bài báo hẹn hò lên trang nhất! GAME OVER! Bạn bị sa thải!" },
+                    { text: "Đi nhanh vào trung tâm thương mại đông đúc.", target: "SAFE", points: 1, nextText: "Cắt đuôi phóng viên thành công!" }
+                ]
+            },
+            {
+                stage: 3,
+                chapter: 5,
+                title: "Lời Hứa Bí Mật",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục thường ngày",
+                text: "Thật hú vía... Nhưng được hẹn hò bí mật với chị MIA thế này làm em hạnh phúc lắm!",
+                choices: [
+                    { text: "Hứa sẽ đưa Idol đến đỉnh cao sự nghiệp.", target: "CURRENT", points: 3, nextText: "Mối tình bí mật càng thêm gắn kết." },
+                    { text: "Trao một nụ hôn nhẹ lên trán Idol.", target: "CURRENT", points: 4, nextText: "Trái tim 2 người hoàn toàn thuộc về nhau." },
+                    { text: "Cùng nhau trở về công ty an toàn.", target: "CURRENT", points: 2, nextText: "Hai người nắm tay bước tiếp." }
+                ]
+            },
+
+            // STAGE 4: ĐƯA IDOL LÊN ĐỈNH CAO SỰ NGHIỆP (BUỔI DIỄN 3 - YELLOW OUTFIT)
+            {
+                stage: 4,
+                chapter: 1,
+                title: "Trang Phục Tỏa Sáng Yellow Outfit",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục buổi diễn 3 (Yellow Outfit)",
+                text: "Màn 4 đã tới! Trang phục Yellow Outfit lộng lẫy này là nhờ sự chuẩn bị của chị MIA!",
+                choices: [
+                    { text: "Em chính là ngôi sao rực rỡ nhất đêm nay!", target: "CURRENT", points: 3, nextText: "Idol tràn đầy tự tin bước lên sân khấu." },
+                    { text: "Nhắc nhở giữ vững phong độ đỉnh cao.", target: "CURRENT", points: 2, nextText: "Idol gật đầu quyết tâm." },
+                    { text: "Chỉnh lại dây trang phục giúp Idol.", target: "CURRENT", points: 3, nextText: "Ánh mắt trao nhau đầy tình cảm." }
+                ]
+            },
+            {
+                stage: 4,
+                chapter: 2,
+                title: "Sự Cạnh Tranh Ngầm",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục buổi diễn 3 (Yellow Outfit)",
+                text: "Các idol khác có vẻ ghen tị vì độ nổi tiếng của chúng ta dạo này tăng vọt...",
+                choices: [
+                    { text: "Hãy chứng minh bằng thực lực trên sân khấu!", target: "CURRENT", points: 3, nextText: "Idol mỉm cười kiêu hãnh." },
+                    { text: "Chị sẽ luôn đứng ra bảo vệ em trước mọi sóng gió.", target: "CURRENT", points: 4, nextText: "Idol ôm chầm lấy bạn." },
+                    { text: "Tập trung vào phần biểu diễn của mình thôi.", target: "CURRENT", points: 2, nextText: "Idol sẵn sàng tổng duyệt." }
+                ]
+            },
+            {
+                stage: 4,
+                chapter: 3,
+                title: "THỬ THÁCH: BẪY TRUYỀN THÔNG",
+                speaker: "SYSTEM",
+                outfit: "Trang phục buổi diễn 3 (Yellow Outfit)",
+                text: "Một phóng viên hỏi xoáy: 'Có tin đồn quản lý MIA đang hẹn hò bí mật với Idol?'",
+                choices: [
+                    { text: "Khéo léo trả lời: 'Chúng tôi chỉ coi nhau như gia đình.'", target: "SAFE", points: 1, nextText: "Xử lý khủng hoảng truyền thông hoàn hảo!" },
+                    { text: "Lúng túng không trả lời được.", target: "RISK", points: -5, nextText: "Tin đồn bùng nổ! GAME OVER! Bị ép thôi việc!" },
+                    { text: "Chuyển hướng câu hỏi sang album mới.", target: "SAFE", points: 1, nextText: "Mọi sự chú ý quay lại chuyên môn." }
+                ]
+            },
+            {
+                stage: 4,
+                chapter: 4,
+                title: "Đêm Concert Hoành Tráng",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục buổi diễn 3 (Yellow Outfit)",
+                text: "Hàng vạn biển đèn LED đang gọi tên em! Chị MIA ơi, em làm được rồi!",
+                choices: [
+                    { text: "Chị rất tự hào về em, Idol của lòng chị!", target: "CURRENT", points: 4, nextText: "Idol rơi nước mắt vì hạnh phúc." },
+                    { text: "Màn trình diễn Yellow Outfit đẹp nhất từ trước tới nay!", target: "CURRENT", points: 3, nextText: "Cả khán phòng bùng nổ." },
+                    { text: "Hãy tiếp tục tỏa sáng nhé!", target: "CURRENT", points: 2, nextText: "Tiếng vỗ tay kéo dài không ngắt." }
+                ]
+            },
+            {
+                stage: 4,
+                chapter: 5,
+                title: "Giải Thưởng Idol Xuất Sắc Nhất",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục buổi diễn 3 (Yellow Outfit)",
+                text: "Chúng ta đã giành cúp Vàng năm nay! Đỉnh cao sự nghiệp đã đạt được!",
+                choices: [
+                    { text: "Chúc mừng em! Giờ là lúc hướng tới tương lai 2 người.", target: "CURRENT", points: 5, nextText: "Tiến tới Màn 5 - Lễ Kết Hôn!" },
+                    { text: "Cảm ơn em đã luôn nỗ lực vì chị.", target: "CURRENT", points: 4, nextText: "Mở khóa Màn 5 thành công!" },
+                    { text: "Chúng ta là một đội hoàn hảo!", target: "CURRENT", points: 3, nextText: "Sẵn sàng cho cái kết viên mãn!" }
+                ]
+            },
+
+            // STAGE 5: KẾT HÔN & CUỘC SỐNG THƯỜNG NGÀY (VÁY CƯỚI & THƯỜNG NGÀY)
+            {
+                stage: 5,
+                chapter: 1,
+                title: "Khoác Lên Mình Váy Cưới",
+                speaker: "CURRENT_IDOL",
+                outfit: "Váy cưới tinh khôi",
+                text: "Chị MIA... Bộ Váy cưới này có đẹp không? Cuối cùng em cũng được là cô dâu của chị...",
+                choices: [
+                    { text: "Em là cô dâu lộng lẫy và tuyệt vời nhất thế giới!", target: "CURRENT", points: 5, nextText: "Idol xúc động ôm chặt lấy bạn." },
+                    { text: "Chị chờ đợi khoảnh khắc này từ rất lâu rồi.", target: "CURRENT", points: 4, nextText: "Ánh mắt chan chứa tình yêu." },
+                    { text: "Nắm tay cô dâu bước vào thánh đường.", target: "CURRENT", points: 5, nextText: "Tiếng chuông lễ đường vang lên." }
+                ]
+            },
+            {
+                stage: 5,
+                chapter: 2,
+                title: "Lễ Đường Hạnh Phúc",
+                speaker: "CURRENT_IDOL",
+                outfit: "Váy cưới tinh khôi",
+                text: "Trước sự chứng kiến của mọi người, em nguyện trọn đời yêu thương chị MIA!",
+                choices: [
+                    { text: "Chị nguyện trao trọn cuộc đời này cho em.", target: "CURRENT", points: 5, nextText: "Trao nhẫn cưới lấp lánh." },
+                    { text: "Trao nụ hôn nồng cháy chúc phúc.", target: "CURRENT", points: 5, nextText: "Mọi người vỗ tay chúc mừng." },
+                    { text: "Hứa sẽ luôn làm em hạnh phúc.", target: "CURRENT", points: 4, nextText: "Giọt nước mắt hạnh phúc lăn dài." }
+                ]
+            },
+            {
+                stage: 5,
+                chapter: 3,
+                title: "Cuộc Sống Thường Ngày - Buổi Sáng",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục thường ngày",
+                text: "Chào buổi sáng chị MIA! Em đã làm xong bữa sáng cho hai chúng mình rồi nè!",
+                choices: [
+                    { text: "Chào buổi sáng bà xã ngọt ngào!", target: "CURRENT", points: 3, nextText: "Cùng nhau ăn bữa sáng ấm áp." },
+                    { text: "Thức dậy được thấy em là điều tuyệt nhất.", target: "CURRENT", points: 3, nextText: "Nụ cười rạng rỡ chào ngày mới." },
+                    { text: "Thưởng thức món ăn em nấu ngon tuyệt.", target: "CURRENT", points: 2, nextText: "Không khí gia đình êm đềm." }
+                ]
+            },
+            {
+                stage: 5,
+                chapter: 4,
+                title: "Cuộc Sống Thường Ngày - Buổi Chiều",
+                speaker: "CURRENT_IDOL",
+                outfit: "Trang phục thường ngày",
+                text: "Dù giải nghệ để sống bình thường nhưng em chưa bao giờ hối hận vì đã chọn chị.",
+                choices: [
+                    { text: "Cảm ơn em đã đánh đổi tất cả vì tình yêu.", target: "CURRENT", points: 4, nextText: "Hai người tựa đầu bên cửa sổ." },
+                    { text: "Chị sẽ bù đắp cho em bằng cả cuộc đời này.", target: "CURRENT", points: 4, nextText: "Vòng tay ấm áp ôm trọn." },
+                    { text: "Cùng nhau xem lại những album kỷ niệm.", target: "CURRENT", points: 3, nextText: "Kỷ niệm đẹp đẽ sống lại." }
+                ]
+            },
+            {
+                stage: 5,
+                chapter: 5,
+                title: "HAPPY ENDING - MÃI MÃI BÊN NHAU",
+                speaker: "CURRENT_IDOL",
+                outfit: "Váy cưới tinh khôi",
+                text: "Cảm ơn chị MIA đã đồng hành cùng em từ những ngày đầu ra mắt cho tới tận hôm nay! Em yêu chị rất nhiều!",
+                choices: [
+                    { text: "HAPPY ENDING! (Chơi lại từ đầu)", target: "RESTART", points: 0, nextText: "Chúc mừng bạn đã hoàn thành câu chuyện tình yêu viên mãn!" }
+                ]
+            }
+        ];
+
+        // --- 2. GAME STATE MANAGEMENT ---
+        let gameState = {
+            currentStep: 0,
+            affection: {
+                ROSA: 0,
+                LILI: 0,
+                SUSI: 0
+            },
+            datingPartner: null, // 'ROSA', 'LILI', or 'SUSI'
+            logs: []
+        };
+
+        // DOM ELEMENTS
+        const hudStage = document.getElementById('hud-stage');
+        const hudChapter = document.getElementById('hud-chapter');
+        const hudTitle = document.getElementById('hud-title');
+        const affRosa = document.getElementById('aff-rosa');
+        const affLili = document.getElementById('aff-lili');
+        const affSusi = document.getElementById('aff-susi');
+        
+        const speakerName = document.getElementById('speaker-name');
+        const outfitTag = document.getElementById('outfit-tag');
+        const dialogueText = document.getElementById('dialogue-text');
+        const choicesContainer = document.getElementById('choices-container');
+        const eventDesc = document.getElementById('event-desc');
+
+        const btnLog = document.getElementById('btn-log');
+        const btnReset = document.getElementById('btn-reset');
+        const logModal = document.getElementById('log-modal');
+        const logContent = document.getElementById('log-content');
+        const btnCloseLog = document.getElementById('btn-close-log');
+
+        const canvas = document.getElementById('character-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- 3. CANVAS PROCEDURAL CHARACTER & OUTFIT DRAWING (GACHA 2D STYLE) ---
+        function drawCharacter(character, outfitName) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cx = 110; // Center X
+            const cy = 200; // Center Y
+
+            // Colors based on requested images
+            let hairColor = "#8b5cf6"; // LILI: Purple
+            let eyeColor = "#ec4899";
+            let hairStyle = "long_ribbon";
+
+            if (character === "ROSALIA" || character === "ROSA") {
+                hairColor = "#f97316"; // ROSA: Orange/Peach
+                eyeColor = "#06b6d4";
+                hairStyle = "long_twin";
+            } else if (character === "SUSIAN" || character === "SUSI") {
+                hairColor = "#f472b6"; // SUSI: Pink short
+                eyeColor = "#3b82f6";
+                hairStyle = "short_cute";
+            }
+
+            // A. DRAW BODY & SKIN
+            ctx.fillStyle = "#ffe4e6"; // Light skin tone
+            // Head
+            ctx.beginPath();
+            ctx.arc(cx, 90, 42, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Torso
+            ctx.fillRect(cx - 16, 128, 32, 60);
+            // Legs
+            ctx.fillRect(cx - 14, 188, 11, 75);
+            ctx.fillRect(cx + 3, 188, 11, 75);
+
+            // B. DRAW EYES & BLUSH
+            ctx.fillStyle = eyeColor;
+            ctx.beginPath();
+            ctx.ellipse(cx - 15, 92, 7, 11, 0, 0, Math.PI * 2);
+            ctx.ellipse(cx + 15, 92, 7, 11, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye Highlights
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(cx - 13, 88, 3, 0, Math.PI * 2);
+            ctx.arc(cx + 17, 88, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Blush
+            ctx.fillStyle = "rgba(244, 114, 182, 0.4)";
+            ctx.beginPath();
+            ctx.arc(cx - 22, 104, 8, 0, Math.PI * 2);
+            ctx.arc(cx + 22, 104, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cute Smile
+            ctx.strokeStyle = "#be123c";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, 104, 5, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+
+            // C. DRAW OUTFIT BASED ON STAGE
+            if (outfitName.includes("Blue Outfit")) {
+                // BLUE OUTFIT (Stage 1)
+                ctx.fillStyle = "#3b82f6";
+                ctx.fillRect(cx - 18, 130, 36, 35);
+                ctx.fillStyle = "#93c5fd";
+                ctx.beginPath();
+                ctx.moveTo(cx - 24, 165);
+                ctx.lineTo(cx + 24, 165);
+                ctx.lineTo(cx + 30, 195);
+                ctx.lineTo(cx - 30, 195);
+                ctx.closePath();
+                ctx.fill();
+                // Pink Ribbon Belt
+                ctx.fillStyle = "#ec4899";
+                ctx.fillRect(cx - 20, 158, 40, 8);
+            } else if (outfitName.includes("Pink Outfit")) {
+                // PINK OUTFIT (Stage 2)
+                ctx.fillStyle = "#ec4899";
+                ctx.fillRect(cx - 18, 130, 36, 35);
+                ctx.fillStyle = "#f472b6";
+                ctx.beginPath();
+                ctx.moveTo(cx - 22, 165);
+                ctx.lineTo(cx + 22, 165);
+                ctx.lineTo(cx + 28, 195);
+                ctx.lineTo(cx - 28, 195);
+                ctx.closePath();
+                ctx.fill();
+            } else if (outfitName.includes("Yellow Outfit")) {
+                // YELLOW OUTFIT (Stage 4)
+                ctx.fillStyle = "#eab308";
+                ctx.fillRect(cx - 18, 130, 36, 35);
+                ctx.fillStyle = "#fef08a";
+                ctx.beginPath();
+                ctx.moveTo(cx - 25, 165);
+                ctx.lineTo(cx + 25, 165);
+                ctx.lineTo(cx + 32, 198);
+                ctx.lineTo(cx - 32, 198);
+                ctx.closePath();
+                ctx.fill();
+            } else if (outfitName.includes("Váy cưới")) {
+                // BRIDAL DRESS (Stage 5)
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(cx - 18, 130, 36, 30);
+                // Big Veil / Skirt
+                ctx.fillStyle = "#f8fafc";
+                ctx.beginPath();
+                ctx.moveTo(cx - 20, 160);
+                ctx.lineTo(cx + 20, 160);
+                ctx.lineTo(cx + 40, 260);
+                ctx.lineTo(cx - 40, 260);
+                ctx.closePath();
+                ctx.fill();
+                // Golden Trim
+                ctx.strokeStyle = "#fde047";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            } else {
+                // CASUAL OUTFIT (Stage 3)
+                ctx.fillStyle = "#475569";
+                ctx.fillRect(cx - 17, 130, 34, 32);
+                ctx.fillStyle = "#0284c7";
+                ctx.fillRect(cx - 14, 162, 28, 30);
+            }
+
+            // D. DRAW HAIR
+            ctx.fillStyle = hairColor;
+            if (hairStyle === "long_ribbon") {
+                // Lili: Long hair + big bow
+                ctx.beginPath();
+                ctx.arc(cx, 82, 46, Math.PI * 0.8, Math.PI * 2.2);
+                ctx.fill();
+                // Side bangs
+                ctx.fillRect(cx - 48, 80, 16, 110);
+                ctx.fillRect(cx + 32, 80, 16, 110);
+                // Big Bow
+                ctx.fillStyle = "#67e8f9";
+                ctx.beginPath();
+                ctx.arc(cx - 30, 50, 14, 0, Math.PI * 2);
+                ctx.arc(cx + 30, 50, 14, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (hairStyle === "long_twin") {
+                // Rosa: Long orange twin hair
+                ctx.beginPath();
+                ctx.arc(cx, 82, 46, Math.PI * 0.8, Math.PI * 2.2);
+                ctx.fill();
+                ctx.fillRect(cx - 46, 75, 14, 140);
+                ctx.fillRect(cx + 32, 75, 14, 140);
+                // Strawberry hairclip
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath();
+                ctx.arc(cx - 25, 52, 10, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Susi: Short cute pink hair
+                ctx.beginPath();
+                ctx.arc(cx, 82, 48, Math.PI * 0.8, Math.PI * 2.2);
+                ctx.fill();
+                ctx.fillRect(cx - 44, 80, 12, 60);
+                ctx.fillRect(cx + 32, 80, 12, 60);
+                // Hair ornament
+                ctx.fillStyle = "#1e40af";
+                ctx.beginPath();
+                ctx.arc(cx + 25, 55, 9, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // --- 4. GAME ENGINE LOGIC ---
+        function updateHUD() {
+            const currentScene = STORY[gameState.currentStep];
+            hudStage.innerText = currentScene.stage;
+            hudChapter.innerText = currentScene.chapter;
+            hudTitle.innerText = currentScene.title;
+
+            affRosa.innerText = gameState.affection.ROSA;
+            affLili.innerText = gameState.affection.LILI;
+            affSusi.innerText = gameState.affection.SUSI;
+
+            // Save to localStorage
+            localStorage.setItem('mia_idol_game_state', JSON.stringify(gameState));
+        }
+
+        function determineHighestAffectionPartner() {
+            const aff = gameState.affection;
+            if (aff.ROSA >= aff.LILI && aff.ROSA >= aff.SUSI) return "ROSALIA";
+            if (aff.LILI >= aff.ROSA && aff.LILI >= aff.SUSI) return "LILIANA";
+            return "SUSIAN";
+        }
+
+        function renderScene() {
+            const currentScene = STORY[gameState.currentStep];
+            updateHUD();
+
+            // Determine active speaker name
+            let activeSpeaker = currentScene.speaker;
+            if (activeSpeaker === "CURRENT_IDOL") {
+                if (!gameState.datingPartner) {
+                    gameState.datingPartner = determineHighestAffectionPartner();
+                }
+                activeSpeaker = gameState.datingPartner;
+            } else if (activeSpeaker === "SYSTEM") {
+                activeSpeaker = "HỆ THỐNG / CỐT TRUYỆN";
+            }
+
+            speakerName.innerText = activeSpeaker;
+            outfitTag.innerText = "Trang phục: " + currentScene.outfit;
+            dialogueText.innerText = currentScene.text;
+            eventDesc.innerText = `Màn ${currentScene.stage} - ${currentScene.title}: Cùng đưa nhóm Idol chinh phục các cột mốc sự nghiệp và tìm kiếm tình yêu bí mật!`;
+
+            // Draw Character Canvas
+            let charToDraw = activeSpeaker;
+            if (charToDraw === "HỆ THỐNG / CỐT TRUYỆN") {
+                charToDraw = gameState.datingPartner || "LILIANA";
+            }
+            drawCharacter(charToDraw, currentScene.outfit);
+
+            // Render Choices
+            choicesContainer.innerHTML = '';
+            currentScene.choices.forEach((choice, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-slate-950/90 hover:bg-pink-950/80 border border-pink-500/40 hover:border-pink-400 p-3 rounded-xl text-xs md:text-sm font-semibold text-slate-200 transition glow-button flex items-center justify-between";
+                btn.innerHTML = `
+                    <span><strong class="text-pink-400 mr-2">${index + 1}.</strong> ${choice.text}</span>
+                    <span class="text-pink-500 text-xs">➔</span>
+                `;
+                btn.onclick = () => makeChoice(choice, activeSpeaker);
+                choicesContainer.appendChild(btn);
+            });
+        }
+
+        function makeChoice(choice, activeSpeaker) {
+            // Add to log
+            const currentScene = STORY[gameState.currentStep];
+            gameState.logs.push({
+                speaker: activeSpeaker,
+                text: currentScene.text,
+                chosen: choice.text
+            });
+
+            // Handle points & logic
+            if (choice.target === "ROSA") gameState.affection.ROSA += choice.points;
+            if (choice.target === "LILI") gameState.affection.LILI += choice.points;
+            if (choice.target === "SUSI") gameState.affection.SUSI += choice.points;
+            if (choice.target === "CURRENT" && gameState.datingPartner) {
+                const key = gameState.datingPartner.startsWith("ROSA") ? "ROSA" : (gameState.datingPartner.startsWith("LILI") ? "LILI" : "SUSI");
+                gameState.affection[key] += choice.points;
+            }
+
+            // GAME OVER CHECK (RISK CHOICES IN STAGE 3/4)
+            if (choice.target === "RISK") {
+                alert(choice.nextText + "\n\nBẠN ĐÃ THUA GAME VÀ PHẢI CHUYỂN CÔNG TY!");
+                resetGame();
+                return;
+            }
+
+            // Check Restart
+            if (choice.target === "RESTART") {
+                alert("Chúc mừng bạn đã hoàn thành câu chuyện tình yêu ngọt ngào cùng Idol!");
+                resetGame();
+                return;
+            }
+
+            // Show Feedback Alert/Text
+            alert(choice.nextText);
+
+            // Advance Game Step
+            if (gameState.currentStep < STORY.length - 1) {
+                gameState.currentStep++;
+                renderScene();
+            }
+        }
+
+        function resetGame() {
+            gameState = {
+                currentStep: 0,
+                affection: { ROSA: 0, LILI: 0, SUSI: 0 },
+                datingPartner: null,
+                logs: []
+            };
+            localStorage.removeItem('mia_idol_game_state');
+            renderScene();
+        }
+
+        // --- 5. EVENT LISTENERS & INITIALIZATION ---
+        btnLog.onclick = () => {
+            logContent.innerHTML = '';
+            if (gameState.logs.length === 0) {
+                logContent.innerHTML = '<p class="text-slate-500 italic">Chưa có nhật ký trò chuyện.</p>';
+            } else {
+                gameState.logs.forEach((log, idx) => {
+                    const item = document.createElement('div');
+                    item.className = "bg-slate-950 p-2.5 rounded border border-slate-800";
+                    item.innerHTML = `
+                        <p class="font-bold text-pink-400 mb-1">[${log.speaker}]</p>
+                        <p class="text-slate-300 mb-1">${log.text}</p>
+                        <p class="text-xs text-pink-300 italic">➔ Đã chọn: ${log.chosen}</p>
+                    `;
+                    logContent.appendChild(item);
+                });
+            }
+            logModal.classList.remove('hidden');
+        };
+
+        btnCloseLog.onclick = () => logModal.classList.add('hidden');
+        btnReset.onclick = () => {
+            if (confirm("Bạn có chắc chắn muốn bắt đầu lại từ đầu?")) {
+                resetGame();
+            }
+        };
+
+        // Load Save State on Start
+        const savedState = localStorage.getItem('mia_idol_game_state');
+        if (savedState) {
+            try {
+                gameState = JSON.parse(savedState);
+            } catch (e) {
+                console.error("Save state error, restarting...", e);
+            }
+        }
+
+        // Start Game
+        renderScene();
+    </script>
+</body>
+</html>
